@@ -13,6 +13,7 @@ import numpy as np
 # 加载数据
 data_file = "../dataset/tang.npz"
 data = np.load(data_file, allow_pickle=True)
+print(data)
 
 # 获取需要映射的索引序列和索引到单词的映射字典
 data_sequence = data["data"][11533]  # 数据中的索引序列
