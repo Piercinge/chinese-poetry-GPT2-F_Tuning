@@ -1,19 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+# from utils.file_utils import load_base_config
 from transformers import AutoTokenizer
 import numpy as np
 import os
 import multiprocessing as mp
 from tqdm import tqdm
 
+# config = load_base_config("conf/config.yaml")
+data_file = "tang/tang.txt"
+
+# 读取数据
+with open(data_file, "r", encoding="utf-8") as f:
+    lines = f.readlines()
+
+# 去除空行和多余的空白符
+chinese_data = [line.strip() for line in lines if line.strip()]
 # 初始化分词器
 tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese", cache_dir="../model/bert-base-chinese")
-
 # 添加结束标记 <|endoftext|> 到分词器
 tokenizer.add_special_tokens(special_tokens_dict={'eos_token': '<|endoftext|>'})
-
 # 设置每个片段的最大 token 数
 context_length = 128
+
 
 def tokenize(doc):
     # 为每个文档添加 <|endoftext|> 标记
@@ -30,27 +39,28 @@ def tokenize(doc):
     assert (0 <= tokens_np).all() and (tokens_np < 2**16).all(), "token 字典对于 uint16 来说太大"
     return tokens_np
 
+
 def write_datafile(filename, tokens_np):
     np.save(filename, tokens_np)
 
+
 shard_size = int(1e6)  # 每个分片的 token 数
-
-output_dir = "test_tokenize_data"
+output_dir = "tang_tokenized_data"
 os.makedirs(output_dir, exist_ok=True)
-
-chinese_data = ["侯枉高鉴，举善掩瑕疵。斯民本已安，工拙两无施。何以酬明德，岁晏不磷缁。时节乃来集，欣怀方载驰。平明大府开，一得拜光辉。温如春风至，肃若严霜威。羣属所载瞻，而忘倦与饥。公堂燕华筵，礼罢复言辞。将从平门道，憩车沣水湄。山川降嘉。", "文档2的内容", "文档3的内容"]  # 示例数据
-
+# 假设中文数据是一个列表，每个元素是一个文档文本
+chinese_data = chinese_data
+# chinese_data = ["文档1的内容", "文档2的内容", "文档3的内容"]  # 示例数据
 nprocs = max(1, os.cpu_count() // 2)
 # 标记所有文档并写入输出分片，每个分片shard_size令牌（最后一个分片有剩余）
-# with mp.Pool(nprocs) as pool:
+# with mp.Pool(nprocs) as pool: # 多线程
 shard_index = 0
-
 # preallocate buffer 以保存当前分片
 all_tokens_np = np.empty((shard_size,), dtype=np.uint16)
 token_count = 0
 progress_bar = None
 
-# 当前分片中是否有足够的空间用于新令牌？
+
+# 判断当前分片中是否有足够的空间用于新token？
 # for tokens in pool.imap(tokenize, chinese_data, chunksize=16):
 for token in chinese_data:
     tokens = tokenize(token)
@@ -65,7 +75,7 @@ for token in chinese_data:
         progress_bar.update(len(tokens))
     else:
         # 写入当前分片并启动新分片
-        filename = os.path.join(output_dir, f"test_{shard_index:06d}.npy")
+        filename = os.path.join(output_dir, f"tang_shard_{shard_index:06d}.npy")
 
         # 将文档拆分为适合此分片的任何内容，其余的转到下一个
         remainder = shard_size - token_count
@@ -81,5 +91,5 @@ for token in chinese_data:
 
 # 将任何剩余的 Token 写入最后一个分片
 if token_count != 0:
-    filename = os.path.join(output_dir, f"test_{shard_index:06d}.npy")
+    filename = os.path.join(output_dir, f"tang_shard_{shard_index:06d}.npy")
     write_datafile(filename, all_tokens_np[:token_count])
