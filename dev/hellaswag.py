@@ -169,7 +169,7 @@ def render_example_chinese(example):
 def iterate_examples(split):
     # 假设你已经有一个中文诗词数据集文件
     data_file = os.path.join(DATA_CACHE_DIR, f"chinese_poetry_{split}.jsonl")
-    with open(data_file, "r") as f:
+    with open(data_file, "r", encoding="utf-8") as f:
         for line in f:
             example = json.loads(line)
             yield example
