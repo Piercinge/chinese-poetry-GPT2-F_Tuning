@@ -225,7 +225,7 @@ class DataLoaderLite:
         data_root = r"./data/tang_tokenized_data"
         print(data_root)
         shards = os.listdir(data_root)
-        # shards = [s for s in shards if split in s]
+        shards = [s for s in shards if split in s]
         shards = sorted(shards)
         shards = [os.path.join(data_root, s) for s in shards]
         self.shards = shards
