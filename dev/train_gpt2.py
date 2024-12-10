@@ -266,6 +266,8 @@ def get_most_likely_row(tokens, mask, logits):
     shift_tokens = (tokens[..., 1:]).contiguous()
     flat_shift_logits = shift_logits.view(-1, shift_logits.size(-1))
     flat_shift_tokens = shift_tokens.view(-1)
+    print('shift_logits', shift_logits)
+    print('shift_tokens', shift_tokens)
     shift_losses = F.cross_entropy(flat_shift_logits, flat_shift_tokens, reduction='none')
     shift_losses = shift_losses.view(tokens.size(0), -1)
     # now get the average loss just for the completion region (where mask == 1), in each row
@@ -329,7 +331,7 @@ enc = AutoTokenizer.from_pretrained("bert-base-chinese", cache_dir="./model/bert
 enc.add_special_tokens(special_tokens_dict={'eos_token': '<|endoftext|>'})
 
 total_batch_size = 524288 # 2**19, ~0.5M, in number of tokens
-B = 16 # micro batch size
+B = 4 # micro batch size
 print(B)
 T = 1024 # sequence length
 assert total_batch_size % (B * T * ddp_world_size) == 0, "make sure total_batch_size is divisible by B * T * ddp_world_size"
@@ -431,7 +433,7 @@ for step in range(max_steps):
                 torch.save(checkpoint, checkpoint_path)
 
     # once in a while evaluate hellaswag
-    if (step % 200 == 0 or last_step) and (not use_compile):
+    if (step % 1 == 0 or last_step) and (not use_compile):
         num_correct_norm = 0
         num_total = 0
         for i, example in enumerate(iterate_examples("val")):
@@ -468,7 +470,7 @@ for step in range(max_steps):
         model.eval()
         num_return_sequences = 4
         max_length = 32
-        tokens = enc.encode("罢归聊自度,")[1:-1]
+        tokens = enc.encode("雨")[1:-1]
         tokens = torch.tensor(tokens, dtype=torch.long)
         tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)
         xgen = tokens.to(device)
